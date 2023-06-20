@@ -33,12 +33,18 @@ func _physics_process(delta: float) -> void:
 	
 func _on_Area2D_input_event(viewport: Node, event: InputEvent, shape_idx: int) -> void:	
 	if Input.is_action_just_pressed("click"):
+		var y = int(floor(get_global_mouse_position().y/64))
+		var x = int(floor(get_global_mouse_position().x/64))
 		
-		legal_moves = GetLegalMoves(floor(get_global_mouse_position().y/64), int(floor(get_global_mouse_position().x/64)), true)
-		
-		get_node("/root/Board").AssignAttackedSquares()	
-
-#		ShowAttackedSquares()
+		if get_node("/root/Board").board_data[y][x].piece != null:
+			if (get_node("/root/Board").board_data[y][x].piece.myColor == colors.WHITE and \
+				get_node("/root/Board").whites_turn) or \
+				(get_node("/root/Board").board_data[y][x].piece.myColor == colors.BLACK and \
+				!get_node("/root/Board").whites_turn):
+					selected = true			
+					legal_moves = GetLegalMoves(y, x)		
+					get_node("/root/Board").AssignAttackedSquares()	
+#					ShowAttackedSquares()
 		
 		if selected:
 			for move in legal_moves:		
@@ -49,7 +55,6 @@ func _on_Area2D_input_event(viewport: Node, event: InputEvent, shape_idx: int) -
 					
 				get_node("/root/Board").board_data[move[0]][move[1]].move_indicator.visible = true
 			
-				
 	elif Input.is_action_just_released("click") and selected:
 		for y in 8:
 			for x in 8:
@@ -65,47 +70,17 @@ func _on_Area2D_input_event(viewport: Node, event: InputEvent, shape_idx: int) -
 		if legal_moves.has([y, x]):	
 			get_node("/root/Board").MovePieceTo(start_y, start_x, y, x)		
 		else:
-			get_node("/root/Board").AssignAttackedSquares()
-			get_node("/root/Board").IsKingInCheck()
+#			get_node("/root/Board").AssignAttackedSquares()
+#			get_node("/root/Board").IsKingInCheck()
 			position.x = start_x * 64 + 32
 			position.y = start_y * 64 + 32
 
 
-func MoveRookTo(_y: int, _x: int, y: int, x: int) -> void:
-		get_node("/root/Board").board_data[y][x].piece = self
-		position.x = x * 64 + 32
-		position.y = y * 64 + 32
-		get_node("/root/Board").board_data[_y][_x].piece = null
-
-
-func AddStoredPieceAt(y: int, x: int, storedPiece: Node2D) -> void:
-	var type = "P"
-	match storedPiece.piece_type:
-		piece_types.PAWN:
-			type = "P"
-		piece_types.ROOK:
-			type = "R"
-		piece_types.KNIGHT:
-			type = "N"
-		piece_types.BISHOP:
-			type = "B"
-		piece_types.QUEEN:
-			type = "Q"
-		piece_types.KING:
-			type = "K"
-	get_node("/root/Board").AddPiece(y, x, storedPiece.myColor == colors.BLACK, type, storedPiece.hasMoved)
-
-func GetLegalMoves(y: int, x: int, selectable: bool) -> Array:
+func GetLegalMoves(y: int, x: int) -> Array:
 	start_y = y 
 	start_x = x
 	
-	if get_node("/root/Board").board_data[y][x].piece != null:
-		if (get_node("/root/Board").board_data[y][x].piece.myColor == colors.WHITE and \
-			get_node("/root/Board").whites_turn) or \
-			(get_node("/root/Board").board_data[y][x].piece.myColor == colors.BLACK and \
-			!get_node("/root/Board").whites_turn):
-				selected = selectable		
-				moves = get_node("/root/Board").board_data[y][x].piece.GetMoves(y, x)
+	moves = get_node("/root/Board").board_data[y][x].piece.GetMoves(y, x)
 
 	legal_moves = []
 	for move in moves:
@@ -116,7 +91,8 @@ func GetLegalMoves(y: int, x: int, selectable: bool) -> Array:
 
 		if target_square.piece != null:
 			stored_piece = target_square.piece
-			target_square.piece.queue_free()	
+			target_square.piece.queue_free()
+			target_square.piece = null	
 
 		target_square.piece = self
 		my_square.piece = null
@@ -138,7 +114,30 @@ func GetLegalMoves(y: int, x: int, selectable: bool) -> Array:
 		my_square.piece = self
 		
 	return legal_moves
-	
+
+func MoveRookTo(_y: int, _x: int, y: int, x: int) -> void:
+		get_node("/root/Board").board_data[y][x].piece = self
+		position.x = x * 64 + 32
+		position.y = y * 64 + 32
+		get_node("/root/Board").board_data[_y][_x].piece = null
+
+func AddStoredPieceAt(y: int, x: int, storedPiece: Node2D) -> void:
+	var type = "P"
+	match storedPiece.piece_type:
+		piece_types.PAWN:
+			type = "P"
+		piece_types.ROOK:
+			type = "R"
+		piece_types.KNIGHT:
+			type = "N"
+		piece_types.BISHOP:
+			type = "B"
+		piece_types.QUEEN:
+			type = "Q"
+		piece_types.KING:
+			type = "K"
+	get_node("/root/Board").AddPiece(y, x, storedPiece.myColor == colors.BLACK, type, storedPiece.hasMoved)	
+
 func AddMove(y: int, x: int) -> bool:	
 	if (y >= 0 and y < 8 and x >= 0 and x < 8):	
 		var target_square = get_node("/root/Board").board_data[y][x]
@@ -168,8 +167,9 @@ func AddPawnMove(y: int, x: int) -> bool:
 		if x != start_x:			
 			SetAttackedSquare(y, x)	
 			
-			if target_square.piece != null and target_square.piece.myColor != myColor:			
-				moves.append([y, x])
+			if target_square.piece != null:
+				if target_square.piece.myColor != myColor:			
+					moves.append([y, x])
 				
 		elif x == start_x and target_square.piece == null:
 			moves.append([y, x])
@@ -179,6 +179,18 @@ func AddPawnMove(y: int, x: int) -> bool:
 	else:
 		return false
 
+	return true
+
+func AddEnPassant(y: int, x: int) -> bool:
+	if (y >= 0 and y < 8 and x >= 0 and x < 8):	
+		var target_square = get_node("/root/Board").board_data[y][x]
+		
+		if target_square.piece != null:
+			if target_square.piece.piece_type == piece_types.PAWN and target_square.piece.capturable_en_passant:
+				moves.append([y-1, x]) if myColor == colors.WHITE else moves.append([y+1, x])
+	else:		
+		return false
+			
 	return true
 
 func AddCastleMove(y: int, x: int, kingside: bool) -> bool:
@@ -224,7 +236,6 @@ func AddCastleMove(y: int, x: int, kingside: bool) -> bool:
 		return true
 	
 	return false
-
 
 func SetAttackedSquare(y: int, x: int) -> void:
 	if myColor == colors.WHITE:

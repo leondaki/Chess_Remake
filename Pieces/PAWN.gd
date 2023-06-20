@@ -4,6 +4,7 @@ extends "res://piece.gd"
 # var a: int = 2
 # var b: String = "text"
 
+var capturable_en_passant = false
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -21,8 +22,6 @@ func GetMoves(y: int, x: int) -> Array:
 	var myRange = [1, 2] if !hasMoved else [1]
 	
 	if myColor == colors.WHITE:
-		
-
 		for moveForward in myRange:
 			if !AddPawnMove(y - moveForward, x):
 				break
@@ -30,6 +29,10 @@ func GetMoves(y: int, x: int) -> Array:
 		# captures
 		AddPawnMove(y - 1, x - 1)
 		AddPawnMove(y - 1, x + 1)
+		
+		if y == 3:
+			AddEnPassant(y, x - 1)
+			AddEnPassant(y, x + 1)
 		
 	elif myColor == colors.BLACK:
 		
@@ -41,7 +44,8 @@ func GetMoves(y: int, x: int) -> Array:
 		AddPawnMove(y + 1, x-1)
 		AddPawnMove(y + 1, x+1)
 		
-
-		
-		
+		if y == 4:
+			AddEnPassant(y, x - 1)
+			AddEnPassant(y, x + 1)
+			
 	return moves

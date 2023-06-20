@@ -1,7 +1,7 @@
 extends Node2D
 
 # Declare member variables here. Examples:
-#var starting_fen = "8/2k1P3/8/4p1K1/8/8/8/8"
+#var starting_fen = "8/p1p1p1p1/8/1P1P1P1P/8/8/8/8"
 var starting_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 #var starting_fen = "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R"
 
@@ -141,7 +141,7 @@ func AssignAttackedSquares() -> void:
 			var target_square = board_data[y][x]
 			if target_square.piece != null:
 				target_square.piece.GetMoves(y, x)
-
+		
 func IsKingInCheck() -> bool:
 	for y in 8:
 		for x in 8:
@@ -168,7 +168,7 @@ func CountMoves() -> int:
 			if target_square.piece != null:
 				if target_square.piece.myColor == target_square.piece.colors.BLACK and !whites_turn or \
 				target_square.piece.myColor == target_square.piece.colors.WHITE and whites_turn:
-					for move in target_square.piece.GetLegalMoves(y, x, false):
+					for move in target_square.piece.GetLegalMoves(y, x):
 						var files = ["a", "b", "c", "d", "e", "f", "g", "h"]
 						num_moves.append(Move.new(target_square.piece.piece_types.keys()[target_square.piece.piece_type], \
 						 [files[x], 8-y], [files[move[1]], 8-move[0]]))
@@ -183,7 +183,6 @@ func CountMoves() -> int:
 #		print('White has ', num_moves.size(), ' legal moves.')
 	
 	return num_moves.size()
-
 
 func MovePieceTo(start_y: int, start_x: int, y: int, x: int) -> void:
 	var start_square = board_data[start_y][start_x]
@@ -204,6 +203,23 @@ func MovePieceTo(start_y: int, start_x: int, y: int, x: int) -> void:
 			
 			start_square.piece.queue_free()
 			start_square.piece = new_queen
+
+	# en passanr
+	ClearEnPassantRight()
+	
+	if start_square.piece.piece_type == start_square.piece.piece_types.PAWN: 
+		if !start_square.piece.capturable_en_passant and abs(y - start_y) == 2:
+			start_square.piece.capturable_en_passant = true	
+
+		if x != start_x and target_square.piece == null:
+			if start_square.piece.myColor == start_square.piece.colors.WHITE:
+				board_data[y+1][x].piece.queue_free()
+				board_data[y+1][x].piece = null
+			else:
+				board_data[y-1][x].piece.queue_free()
+				board_data[y+1][x].piece = null
+
+	
 
 	# move rooks after castling
 	if start_square.piece.piece_type == start_square.piece.piece_types.KING:
@@ -230,7 +246,14 @@ func MovePieceTo(start_y: int, start_x: int, y: int, x: int) -> void:
 	if CountMoves() == 0:
 		print("CHECKMATE!") if king_checked else print("Stalemate.")
 
-		
+
+func ClearEnPassantRight() -> void:
+	for y in 8:
+		for x in 8:
+			if board_data[y][x].piece != null:
+				if board_data[y][x].piece.piece_type == board_data[y][x].piece.piece_types.PAWN:		
+					board_data[y][x].piece.capturable_en_passant = false	
+				
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
 	pass
