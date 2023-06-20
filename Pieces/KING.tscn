@@ -1,17 +1,18 @@
 [gd_scene load_steps=4 format=2]
 
-[ext_resource path="res://art/chess_pieces-new.png" type="Texture" id=1]
-[ext_resource path="res://piece.gd" type="Script" id=2]
+[ext_resource path="res://Pieces/KING.gd" type="Script" id=1]
+[ext_resource path="res://art/chess_pieces.png" type="Texture" id=2]
 
 [sub_resource type="RectangleShape2D" id=1]
-extents = Vector2( 32, 32 )
+extents = Vector2( 8, 6 )
 
-[node name="Piece" type="Node2D"]
-script = ExtResource( 2 )
+[node name="King" type="Node2D"]
+scale = Vector2( 4, 4 )
+script = ExtResource( 1 )
+piece_type = 5
 
 [node name="Sprite" type="Sprite" parent="."]
-scale = Vector2( 0.15, 0.15 )
-texture = ExtResource( 1 )
+texture = ExtResource( 2 )
 hframes = 6
 vframes = 2
 frame = 5
