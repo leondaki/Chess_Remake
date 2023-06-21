@@ -4,7 +4,7 @@ extends "res://piece.gd"
 # var a: int = 2
 # var b: String = "text"
 
-var capturable_en_passant = true
+var capturable_en_passant = false
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -15,6 +15,9 @@ func _ready() -> void:
 #func _process(delta: float) -> void:
 #	pass
 
+func SetEnPassant(en_passantable: bool) -> void:
+	 capturable_en_passant = en_passantable
+	
 func GetMoves(y: int, x: int) -> Array:
 	moves = []
 

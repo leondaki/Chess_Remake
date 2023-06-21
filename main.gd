@@ -3,7 +3,7 @@ extends Node2D
 # Declare member variables here. Examples:
 #var starting_fen = "8/6bb/8/8/R1pP2k1/4P3/P7/K7"
 var starting_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
-#var starting_fen = "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R"
+#var starting_fen = "8/1p1p1p1p/8/P1P1P1P1/8/8/8/8"
 
 # pieces 
 var PAWN = preload("res://Pieces/PAWN.tscn")
@@ -88,7 +88,7 @@ func ReadFEN() -> void:
 	var j = 0	
 	for s in starting_fen:
 		if s != "/" and !s.is_valid_integer():
-			AddPiece(i, j, s == s.to_lower(), s, false)
+			AddPiece(i, j, s == s.to_lower(), s, false, false)
 			j += 1
 			if j == width:
 				j = 0
@@ -99,7 +99,7 @@ func ReadFEN() -> void:
 				j = 0
 				i += 1	
 					
-func AddPiece(i: int, j: int, isBlack: bool, type: String, hasMoved: bool) -> void:
+func AddPiece(i: int, j: int, isBlack: bool, type: String, hasMoved: bool, capturable_en_passant: bool) -> void:
 	var new_piece
 	
 	match type.to_upper():
@@ -128,6 +128,9 @@ func AddPiece(i: int, j: int, isBlack: bool, type: String, hasMoved: bool) -> vo
 	new_piece.position.x = j * 64 + 32
 	new_piece.position.y = i * 64 + 32
 
+	if new_piece.piece_type == new_piece.piece_types.PAWN:
+		new_piece.SetEnPassant(capturable_en_passant)
+		
 	add_child(new_piece)	
 
 func AssignAttackedSquares() -> void:
@@ -191,7 +194,7 @@ func MovePieceTo(start_y: int, start_x: int, y: int, x: int) -> void:
 		target_square.piece.queue_free()
 		
 	start_square.piece.hasMoved = true	
-	board_data[y][x].piece = start_square.piece 
+	board_data[y][x].piece = start_square.piece
 	start_square.piece = null
 	
 	target_square.piece.position.x = x * 64 + 32
@@ -205,6 +208,7 @@ func MovePieceTo(start_y: int, start_x: int, y: int, x: int) -> void:
 
 	if CountMoves() == 0:
 		print("CHECKMATE!") if king_checked else print("Stalemate.")
+		
 func IsKingInCheck(turn_ended: bool) -> bool:
 	for y in 8:
 		for x in 8:
@@ -228,8 +232,8 @@ func ClearEnPassantRight() -> void:
 	for y in 8:
 		for x in 8:
 			if board_data[y][x].piece != null:
-				if board_data[y][x].piece.piece_type == board_data[y][x].piece.piece_types.PAWN:		
-					board_data[y][x].piece.capturable_en_passant = false	
+				if board_data[y][x].piece.piece_type == board_data[y][x].piece.piece_types.PAWN:	
+					board_data[y][x].piece.capturable_en_passant = false
 
 func CountMoves() -> int:
 	num_moves = []
@@ -245,8 +249,8 @@ func CountMoves() -> int:
 						num_moves.append(Move.new(target_square.piece.piece_types.keys()[target_square.piece.piece_type], \
 						 [files[x], 8-y], [files[move[1]], 8-move[0]]))
 	
-	for move in num_moves:		
-		print(move.piece_type, ": ", move.from[0], move.from[1], " ~> ", move.to[0], move.to[1])	
+#	for move in num_moves:		
+#		print(move.piece_type, ": ", move.from[0], move.from[1], " ~> ", move.to[0], move.to[1])	
 
 
 	if !whites_turn:		

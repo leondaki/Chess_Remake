@@ -86,12 +86,13 @@ func GetLegalMoves(y: int, x: int) -> Array:
 	for move in moves:
 		#  "play" this move on the board
 		var stored_piece = null
+		var piece_has_moved
+		var en_passantable = false
 		
 		var my_square = get_node("/root/Board").board_data[y][x]
 		var target_square = get_node("/root/Board").board_data[move[0]][move[1]]
 		
-		var is_en_passant_move = false
-		
+		var is_en_passant_move = false	
 		if my_square.piece.piece_type == my_square.piece.piece_types.PAWN and \
 		x != move[1] and target_square.piece == null:
 			is_en_passant_move = true
@@ -99,15 +100,22 @@ func GetLegalMoves(y: int, x: int) -> Array:
 		if is_en_passant_move:
 			if my_square.piece.myColor == my_square.piece.colors.WHITE:
 				stored_piece = get_node("/root/Board").board_data[move[0]+1][move[1]].piece.duplicate()
+				en_passantable = get_node("/root/Board").board_data[move[0]+1][move[1]].piece.capturable_en_passant
 				get_node("/root/Board").board_data[move[0]+1][move[1]].piece.queue_free()
 				get_node("/root/Board").board_data[move[0]+1][move[1]].piece = null
 			elif my_square.piece.myColor == my_square.piece.colors.BLACK:
 				stored_piece = get_node("/root/Board").board_data[move[0]-1][move[1]].piece.duplicate()
+				en_passantable = get_node("/root/Board").board_data[move[0]-1][move[1]].piece.capturable_en_passant
 				get_node("/root/Board").board_data[move[0]-1][move[1]].piece.queue_free()
 				get_node("/root/Board").board_data[move[0]-1][move[1]].piece = null
 				
 		elif target_square.piece != null:
 			stored_piece = target_square.piece.duplicate()
+			piece_has_moved = target_square.piece.hasMoved
+			
+			if target_square.piece.piece_type == my_square.piece.piece_types.PAWN:
+				en_passantable = target_square.piece.capturable_en_passant
+
 			target_square.piece.queue_free()
 			target_square.piece = null	
 
@@ -143,13 +151,13 @@ func GetLegalMoves(y: int, x: int) -> Array:
 					
 			if is_en_passant_move:
 				if my_square.piece.myColor == target_square.piece.colors.WHITE:
-					get_node("/root/Board").AddPiece(move[0]+1, move[1], get_node("/root/Board").whites_turn, type, stored_piece.hasMoved)
+					get_node("/root/Board").AddPiece(move[0]+1, move[1], get_node("/root/Board").whites_turn, type, true, en_passantable)
 					target_square.piece = null
 				else:
-					get_node("/root/Board").AddPiece(move[0]-1, move[1], get_node("/root/Board").whites_turn, type, stored_piece.hasMoved)
+					get_node("/root/Board").AddPiece(move[0]-1, move[1], get_node("/root/Board").whites_turn, type, true, en_passantable)
 					target_square.piece = null
 			else:
-				get_node("/root/Board").AddPiece(move[0], move[1], get_node("/root/Board").whites_turn, type, stored_piece.hasMoved)
+				get_node("/root/Board").AddPiece(move[0], move[1], get_node("/root/Board").whites_turn, type, piece_has_moved, en_passantable)
 		else:
 			target_square.piece = null
 
