@@ -1,7 +1,7 @@
 extends Node2D
 
 # Declare member variables here. Examples:
-#var starting_fen = "8/p1p1p1p1/8/1P1P1P1P/8/8/8/8"
+#var starting_fen = "8/6bb/8/8/R1pP2k1/4P3/P7/K7"
 var starting_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
 #var starting_fen = "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R"
 
@@ -81,7 +81,7 @@ func CreateBoard() -> void:
 			atk_indicator.position.y = y*64 + 16
 			
 			add_child(atk_indicator)
-
+			
 func ReadFEN() -> void:
 	# read the starting fen
 	var i = 0
@@ -128,7 +128,7 @@ func AddPiece(i: int, j: int, isBlack: bool, type: String, hasMoved: bool) -> vo
 	new_piece.position.x = j * 64 + 32
 	new_piece.position.y = i * 64 + 32
 
-	add_child(new_piece)
+	add_child(new_piece)	
 
 func AssignAttackedSquares() -> void:
 	for y in 8:
@@ -141,48 +141,6 @@ func AssignAttackedSquares() -> void:
 			var target_square = board_data[y][x]
 			if target_square.piece != null:
 				target_square.piece.GetMoves(y, x)
-		
-func IsKingInCheck() -> bool:
-	for y in 8:
-		for x in 8:
-			var target_square = board_data[y][x]
-
-			if target_square.piece != null:
-				if (target_square.piece.piece_type == target_square.piece.piece_types.KING):
-					if (target_square.piece.myColor == target_square.piece.colors.WHITE and \
-						target_square.is_attacked_by_black and whites_turn) or \
-						(target_square.piece.myColor == target_square.piece.colors.BLACK and \
-						 target_square.is_attacked_by_white and !whites_turn):
-							target_square.piece.get_child(0).material = target_square.piece.check_outline
-							return true
-					else:
-						target_square.piece.get_child(0).material = null
-	return false
-
-func CountMoves() -> int:
-	num_moves = []
-	for y in 8:
-		for x in 8:
-			var target_square = board_data[y][x]
-					
-			if target_square.piece != null:
-				if target_square.piece.myColor == target_square.piece.colors.BLACK and !whites_turn or \
-				target_square.piece.myColor == target_square.piece.colors.WHITE and whites_turn:
-					for move in target_square.piece.GetLegalMoves(y, x):
-						var files = ["a", "b", "c", "d", "e", "f", "g", "h"]
-						num_moves.append(Move.new(target_square.piece.piece_types.keys()[target_square.piece.piece_type], \
-						 [files[x], 8-y], [files[move[1]], 8-move[0]]))
-	
-#	for move in num_moves:		
-#		print(move.piece_type, ": ", move.from[0], move.from[1], " ~> ", move.to[0], move.to[1])	
-#
-#
-#	if !whites_turn:		
-#		print('Black has ', num_moves.size(), ' legal moves.')
-#	else:
-#		print('White has ', num_moves.size(), ' legal moves.')
-	
-	return num_moves.size()
 
 func MovePieceTo(start_y: int, start_x: int, y: int, x: int) -> void:
 	var start_square = board_data[start_y][start_x]
@@ -204,22 +162,23 @@ func MovePieceTo(start_y: int, start_x: int, y: int, x: int) -> void:
 			start_square.piece.queue_free()
 			start_square.piece = new_queen
 
-	# en passanr
+	# en passant
 	ClearEnPassantRight()
-	
+
 	if start_square.piece.piece_type == start_square.piece.piece_types.PAWN: 
+		# if piece is a pawn moving for the first time
 		if !start_square.piece.capturable_en_passant and abs(y - start_y) == 2:
 			start_square.piece.capturable_en_passant = true	
 
+		# if piece is a pawn capturing via en passant
 		if x != start_x and target_square.piece == null:
 			if start_square.piece.myColor == start_square.piece.colors.WHITE:
 				board_data[y+1][x].piece.queue_free()
 				board_data[y+1][x].piece = null
 			else:
 				board_data[y-1][x].piece.queue_free()
-				board_data[y+1][x].piece = null
+				board_data[y-1][x].piece = null
 
-	
 
 	# move rooks after castling
 	if start_square.piece.piece_type == start_square.piece.piece_types.KING:
@@ -237,14 +196,32 @@ func MovePieceTo(start_y: int, start_x: int, y: int, x: int) -> void:
 	
 	target_square.piece.position.x = x * 64 + 32
 	target_square.piece.position.y = y * 64 + 32
-	whites_turn = !whites_turn	
-
+		
+	whites_turn = !whites_turn
+	
 	AssignAttackedSquares()
 
-	var king_checked = IsKingInCheck()
+	var king_checked = IsKingInCheck(true)
 
 	if CountMoves() == 0:
 		print("CHECKMATE!") if king_checked else print("Stalemate.")
+func IsKingInCheck(turn_ended: bool) -> bool:
+	for y in 8:
+		for x in 8:
+			var target_square = board_data[y][x]
+
+			if target_square.piece != null:
+				if (target_square.piece.piece_type == target_square.piece.piece_types.KING):
+					if (target_square.piece.myColor == target_square.piece.colors.WHITE and \
+						target_square.is_attacked_by_black and whites_turn) or \
+						(target_square.piece.myColor == target_square.piece.colors.BLACK and \
+						 target_square.is_attacked_by_white and !whites_turn):
+							if turn_ended:
+								target_square.piece.get_child(0).material = target_square.piece.check_outline
+							return true
+					elif turn_ended:
+						target_square.piece.get_child(0).material = null
+	return false
 
 
 func ClearEnPassantRight() -> void:
@@ -253,7 +230,32 @@ func ClearEnPassantRight() -> void:
 			if board_data[y][x].piece != null:
 				if board_data[y][x].piece.piece_type == board_data[y][x].piece.piece_types.PAWN:		
 					board_data[y][x].piece.capturable_en_passant = false	
-				
+
+func CountMoves() -> int:
+	num_moves = []
+	for y in 8:
+		for x in 8:
+			var target_square = board_data[y][x]
+					
+			if target_square.piece != null:
+				if target_square.piece.myColor == target_square.piece.colors.BLACK and !whites_turn or \
+				target_square.piece.myColor == target_square.piece.colors.WHITE and whites_turn:
+					for move in target_square.piece.GetLegalMoves(y, x):
+						var files = ["a", "b", "c", "d", "e", "f", "g", "h"]
+						num_moves.append(Move.new(target_square.piece.piece_types.keys()[target_square.piece.piece_type], \
+						 [files[x], 8-y], [files[move[1]], 8-move[0]]))
+	
+	for move in num_moves:		
+		print(move.piece_type, ": ", move.from[0], move.from[1], " ~> ", move.to[0], move.to[1])	
+
+
+	if !whites_turn:		
+		print('Black has ', num_moves.size(), ' legal moves.')
+	else:
+		print('White has ', num_moves.size(), ' legal moves.')
+	
+	return num_moves.size()
+					
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
 	pass

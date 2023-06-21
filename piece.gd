@@ -70,8 +70,8 @@ func _on_Area2D_input_event(viewport: Node, event: InputEvent, shape_idx: int) -
 		if legal_moves.has([y, x]):	
 			get_node("/root/Board").MovePieceTo(start_y, start_x, y, x)		
 		else:
-#			get_node("/root/Board").AssignAttackedSquares()
-#			get_node("/root/Board").IsKingInCheck()
+			get_node("/root/Board").AssignAttackedSquares()
+			get_node("/root/Board").IsKingInCheck(false)
 			position.x = start_x * 64 + 32
 			position.y = start_y * 64 + 32
 
@@ -86,11 +86,28 @@ func GetLegalMoves(y: int, x: int) -> Array:
 	for move in moves:
 		#  "play" this move on the board
 		var stored_piece = null
-		var target_square = get_node("/root/Board").board_data[move[0]][move[1]]
+		
 		var my_square = get_node("/root/Board").board_data[y][x]
-
-		if target_square.piece != null:
-			stored_piece = target_square.piece
+		var target_square = get_node("/root/Board").board_data[move[0]][move[1]]
+		
+		var is_en_passant_move = false
+		
+		if my_square.piece.piece_type == my_square.piece.piece_types.PAWN and \
+		x != move[1] and target_square.piece == null:
+			is_en_passant_move = true
+		
+		if is_en_passant_move:
+			if my_square.piece.myColor == my_square.piece.colors.WHITE:
+				stored_piece = get_node("/root/Board").board_data[move[0]+1][move[1]].piece.duplicate()
+				get_node("/root/Board").board_data[move[0]+1][move[1]].piece.queue_free()
+				get_node("/root/Board").board_data[move[0]+1][move[1]].piece = null
+			elif my_square.piece.myColor == my_square.piece.colors.BLACK:
+				stored_piece = get_node("/root/Board").board_data[move[0]-1][move[1]].piece.duplicate()
+				get_node("/root/Board").board_data[move[0]-1][move[1]].piece.queue_free()
+				get_node("/root/Board").board_data[move[0]-1][move[1]].piece = null
+				
+		elif target_square.piece != null:
+			stored_piece = target_square.piece.duplicate()
 			target_square.piece.queue_free()
 			target_square.piece = null	
 
@@ -102,41 +119,48 @@ func GetLegalMoves(y: int, x: int) -> Array:
 
 		# at this point, we can check if the move is legal: 		
 		# if the king is on a square that is attacked by opposite color, move is illegal
-		if !get_node("/root/Board").IsKingInCheck():
+		if !get_node("/root/Board").IsKingInCheck(false):
 			legal_moves.push_back(move)
 
 		# finally, we must return the board to its state before the move was played
+		my_square.piece = self
+			
 		if stored_piece != null:
-			AddStoredPieceAt(move[0], move[1], stored_piece)
+			var type = "P"
+			match stored_piece.piece_type:
+				piece_types.PAWN:
+					type = "P"
+				piece_types.ROOK:
+					type = "R"
+				piece_types.KNIGHT:
+					type = "N"
+				piece_types.BISHOP:
+					type = "B"
+				piece_types.QUEEN:
+					type = "Q"
+				piece_types.KING:
+					type = "K"
+					
+			if is_en_passant_move:
+				if my_square.piece.myColor == target_square.piece.colors.WHITE:
+					get_node("/root/Board").AddPiece(move[0]+1, move[1], get_node("/root/Board").whites_turn, type, stored_piece.hasMoved)
+					target_square.piece = null
+				else:
+					get_node("/root/Board").AddPiece(move[0]-1, move[1], get_node("/root/Board").whites_turn, type, stored_piece.hasMoved)
+					target_square.piece = null
+			else:
+				get_node("/root/Board").AddPiece(move[0], move[1], get_node("/root/Board").whites_turn, type, stored_piece.hasMoved)
 		else:
 			target_square.piece = null
 
-		my_square.piece = self
-		
 	return legal_moves
 
 func MoveRookTo(_y: int, _x: int, y: int, x: int) -> void:
-		get_node("/root/Board").board_data[y][x].piece = self
-		position.x = x * 64 + 32
-		position.y = y * 64 + 32
-		get_node("/root/Board").board_data[_y][_x].piece = null
+	get_node("/root/Board").board_data[y][x].piece = self
+	position.x = x * 64 + 32
+	position.y = y * 64 + 32
+	get_node("/root/Board").board_data[_y][_x].piece = null
 
-func AddStoredPieceAt(y: int, x: int, storedPiece: Node2D) -> void:
-	var type = "P"
-	match storedPiece.piece_type:
-		piece_types.PAWN:
-			type = "P"
-		piece_types.ROOK:
-			type = "R"
-		piece_types.KNIGHT:
-			type = "N"
-		piece_types.BISHOP:
-			type = "B"
-		piece_types.QUEEN:
-			type = "Q"
-		piece_types.KING:
-			type = "K"
-	get_node("/root/Board").AddPiece(y, x, storedPiece.myColor == colors.BLACK, type, storedPiece.hasMoved)	
 
 func AddMove(y: int, x: int) -> bool:	
 	if (y >= 0 and y < 8 and x >= 0 and x < 8):	
@@ -159,83 +183,6 @@ func AddMove(y: int, x: int) -> bool:
 		return false
 
 	return true
-
-func AddPawnMove(y: int, x: int) -> bool:
-	if (y >= 0 and y < 8 and x >= 0 and x < 8):	
-		var target_square = get_node("/root/Board").board_data[y][x]
-			
-		if x != start_x:			
-			SetAttackedSquare(y, x)	
-			
-			if target_square.piece != null:
-				if target_square.piece.myColor != myColor:			
-					moves.append([y, x])
-				
-		elif x == start_x and target_square.piece == null:
-			moves.append([y, x])
-		elif x == start_x and target_square.piece != null:
-			return false
-		
-	else:
-		return false
-
-	return true
-
-func AddEnPassant(y: int, x: int) -> bool:
-	if (y >= 0 and y < 8 and x >= 0 and x < 8):	
-		var target_square = get_node("/root/Board").board_data[y][x]
-		
-		if target_square.piece != null:
-			if target_square.piece.piece_type == piece_types.PAWN and target_square.piece.capturable_en_passant:
-				moves.append([y-1, x]) if myColor == colors.WHITE else moves.append([y+1, x])
-	else:		
-		return false
-			
-	return true
-
-func AddCastleMove(y: int, x: int, kingside: bool) -> bool:
-	var target_square 
-	
-	if kingside:
-		if get_node("/root/Board").board_data[y][x+3].piece != null:
-			if get_node("/root/Board").board_data[y][x+3].piece.hasMoved:
-				return false
-		else:
-			return false
-			
-		for right in range(1 , 3):
-			target_square = get_node("/root/Board").board_data[y][x+right]
-			
-			if myColor == colors.WHITE and (target_square.is_attacked_by_black or target_square.piece != null) or \
-			myColor == colors.BLACK and (target_square.is_attacked_by_white or target_square.piece != null):
-				return false
-				
-	elif !kingside:
-		if get_node("/root/Board").board_data[y][x-4].piece != null:
-			if get_node("/root/Board").board_data[y][x-4].piece.hasMoved:
-				return false
-		else:
-			return false
-			
-		for left in range(1 , 4):
-			target_square = get_node("/root/Board").board_data[y][x-left]
-
-			if target_square.piece != null:
-				return false
-			
-			if left < 3:
-				if myColor == colors.WHITE and (target_square.is_attacked_by_black) or \
-				myColor == colors.BLACK and (target_square.is_attacked_by_white):
-					return false
-
-	if !get_node("/root/Board").IsKingInCheck():
-		if kingside:
-			moves.append([y, x+2])
-		else:
-			moves.append([y, x-2])
-		return true
-	
-	return false
 
 func SetAttackedSquare(y: int, x: int) -> void:
 	if myColor == colors.WHITE:

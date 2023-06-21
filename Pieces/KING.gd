@@ -57,3 +57,47 @@ func GetMoves(y: int, x: int) -> Array:
 		AddCastleMove(y, x, true)
 		
 	return moves
+
+func AddCastleMove(y: int, x: int, kingside: bool) -> bool:
+	var target_square 
+	
+	if kingside:
+		if get_node("/root/Board").board_data[y][x+3].piece != null:
+			if get_node("/root/Board").board_data[y][x+3].piece.hasMoved:
+				return false
+		else:
+			return false
+			
+		for right in range(1 , 3):
+			target_square = get_node("/root/Board").board_data[y][x+right]
+			
+			if myColor == colors.WHITE and (target_square.is_attacked_by_black or target_square.piece != null) or \
+			myColor == colors.BLACK and (target_square.is_attacked_by_white or target_square.piece != null):
+				return false
+				
+	elif !kingside:
+		if get_node("/root/Board").board_data[y][x-4].piece != null:
+			if get_node("/root/Board").board_data[y][x-4].piece.hasMoved:
+				return false
+		else:
+			return false
+			
+		for left in range(1 , 4):
+			target_square = get_node("/root/Board").board_data[y][x-left]
+
+			if target_square.piece != null:
+				return false
+			
+			if left < 3:
+				if myColor == colors.WHITE and (target_square.is_attacked_by_black) or \
+				myColor == colors.BLACK and (target_square.is_attacked_by_white):
+					return false
+
+	if !get_node("/root/Board").IsKingInCheck(false):
+		if kingside:
+			moves.append([y, x+2])
+		else:
+			moves.append([y, x-2])
+		return true
+	
+	return false
